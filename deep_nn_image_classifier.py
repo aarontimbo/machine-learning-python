@@ -1,0 +1,206 @@
+# coursera notebook - Week 4
+# Deep Neural Network Image Classifier
+
+import time
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+import scipy
+from PIL import Image
+from scipy import ndimage
+from dnn_app_utils_v2 import *
+
+%matplotlib inline
+plt.rcParams['figure.figsize'] = (5.0, 4.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+
+%load_ext autoreload
+%autoreload 2
+
+np.random.seed(1)
+
+train_x_orig, train_y, test_x_orig, test_y, classes = load_data()
+
+# Example of a picture
+index = 10
+plt.imshow(train_x_orig[index])
+print ("y = " + str(train_y[0,index]) + ". It's a " + classes[train_y[0,index]].decode("utf-8") +  " picture.")
+
+# Explore your dataset 
+m_train = train_x_orig.shape[0]
+num_px = train_x_orig.shape[1]
+m_test = test_x_orig.shape[0]
+
+print ("Number of training examples: " + str(m_train))
+print ("Number of testing examples: " + str(m_test))
+print ("Each image is of size: (" + str(num_px) + ", " + str(num_px) + ", 3)")
+print ("train_x_orig shape: " + str(train_x_orig.shape))
+print ("train_y shape: " + str(train_y.shape))
+print ("test_x_orig shape: " + str(test_x_orig.shape))
+print ("test_y shape: " + str(test_y.shape))
+
+"""
+Number of training examples: 209
+Number of testing examples: 50
+Each image is of size: (64, 64, 3)
+train_x_orig shape: (209, 64, 64, 3)
+train_y shape: (1, 209)
+test_x_orig shape: (50, 64, 64, 3)
+test_y shape: (1, 50)
+"""
+
+# Reshape the training and test examples 
+train_x_flatten = train_x_orig.reshape(train_x_orig.shape[0], -1).T   # The "-1" makes reshape flatten the remaining dimensions
+test_x_flatten = test_x_orig.reshape(test_x_orig.shape[0], -1).T
+
+# Standardize data to have feature values between 0 and 1.
+train_x = train_x_flatten/255.
+test_x = test_x_flatten/255.
+
+print ("train_x's shape: " + str(train_x.shape))
+print ("test_x's shape: " + str(test_x.shape))
+
+
+"""
+train_x's shape: (12288, 209)
+test_x's shape: (12288, 50)
+"""
+
+### CONSTANTS DEFINING THE MODEL ####
+n_x = 12288     # num_px * num_px * 3
+n_h = 7
+n_y = 1
+layers_dims = (n_x, n_h, n_y)
+
+# GRADED FUNCTION: two_layer_model
+
+def two_layer_model(X, Y, layers_dims, learning_rate = 0.0075, num_iterations = 3000, print_cost=False):
+    """
+    Implements a two-layer neural network: LINEAR->RELU->LINEAR->SIGMOID.
+    
+    Arguments:
+    X -- input data, of shape (n_x, number of examples)
+    Y -- true "label" vector (containing 0 if cat, 1 if non-cat), of shape (1, number of examples)
+    layers_dims -- dimensions of the layers (n_x, n_h, n_y)
+    num_iterations -- number of iterations of the optimization loop
+    learning_rate -- learning rate of the gradient descent update rule
+    print_cost -- If set to True, this will print the cost every 100 iterations 
+    
+    Returns:
+    parameters -- a dictionary containing W1, W2, b1, and b2
+    """
+    
+    np.random.seed(1)
+    grads = {}
+    costs = []                              # to keep track of the cost
+    m = X.shape[1]                           # number of examples
+    (n_x, n_h, n_y) = layers_dims
+    
+    # Initialize parameters dictionary, by calling one of the functions you'd previously implemented
+    ### START CODE HERE ### (≈ 1 line of code)
+    parameters = initialize_parameters(n_x, n_h, n_y)
+    ### END CODE HERE ###
+    
+    # Get W1, b1, W2 and b2 from the dictionary parameters.
+    W1 = parameters["W1"]
+    b1 = parameters["b1"]
+    W2 = parameters["W2"]
+    b2 = parameters["b2"]
+    
+    # Loop (gradient descent)
+
+    for i in range(0, num_iterations):
+
+        # Forward propagation: LINEAR -> RELU -> LINEAR -> SIGMOID. Inputs: "X, W1, b1". Output: "A1, cache1, A2, cache2".
+        ### START CODE HERE ### (≈ 2 lines of code)
+        A1, cache1 = linear_activation_forward(X, W1, b1, "relu")
+        A2, cache2 = linear_activation_forward(A1, W2, b2, "sigmoid")
+        ### END CODE HERE ###
+        
+        # Compute cost
+        ### START CODE HERE ### (≈ 1 line of code)
+        cost = compute_cost(A2, Y)
+        ### END CODE HERE ###
+        
+        # Initializing backward propagation
+        dA2 = - (np.divide(Y, A2) - np.divide(1 - Y, 1 - A2))
+        
+        # Backward propagation. Inputs: "dA2, cache2, cache1". Outputs: "dA1, dW2, db2; also dA0 (not used), dW1, db1".
+        ### START CODE HERE ### (≈ 2 lines of code)
+        dA1, dW2, db2 = linear_activation_backward(dA2, cache2, "sigmoid")
+        dA0, dW1, db1 = linear_activation_backward(dA1, cache1, "relu")
+        ### END CODE HERE ###
+        
+        # Set grads['dWl'] to dW1, grads['db1'] to db1, grads['dW2'] to dW2, grads['db2'] to db2
+        grads['dW1'] = dW1
+        grads['db1'] = db1
+        grads['dW2'] = dW2
+        grads['db2'] = db2
+        
+        # Update parameters.
+        ### START CODE HERE ### (approx. 1 line of code)
+        parameters = update_parameters(parameters, grads, learning_rate)
+        ### END CODE HERE ###
+
+        # Retrieve W1, b1, W2, b2 from parameters
+        W1 = parameters["W1"]
+        b1 = parameters["b1"]
+        W2 = parameters["W2"]
+        b2 = parameters["b2"]
+        
+        # Print the cost every 100 training example
+        if print_cost and i % 100 == 0:
+            print("Cost after iteration {}: {}".format(i, np.squeeze(cost)))
+        if print_cost and i % 100 == 0:
+            costs.append(cost)
+       
+    # plot the cost
+
+    plt.plot(np.squeeze(costs))
+    plt.ylabel('cost')
+    plt.xlabel('iterations (per tens)')
+    plt.title("Learning rate =" + str(learning_rate))
+    plt.show()
+    
+    return parameters
+
+parameters = two_layer_model(train_x, train_y, layers_dims = (n_x, n_h, n_y), num_iterations = 2500, print_cost=True)
+
+"""
+Cost after iteration 0: 0.693049735659989
+Cost after iteration 100: 0.6464320953428849
+Cost after iteration 200: 0.6325140647912678
+Cost after iteration 300: 0.6015024920354665
+Cost after iteration 400: 0.5601966311605748
+Cost after iteration 500: 0.515830477276473
+Cost after iteration 600: 0.4754901313943325
+Cost after iteration 700: 0.43391631512257495
+Cost after iteration 800: 0.4007977536203886
+Cost after iteration 900: 0.35807050113237987
+Cost after iteration 1000: 0.3394281538366413
+Cost after iteration 1100: 0.30527536361962654
+Cost after iteration 1200: 0.2749137728213015
+Cost after iteration 1300: 0.24681768210614827
+Cost after iteration 1400: 0.1985073503746611
+Cost after iteration 1500: 0.17448318112556593
+Cost after iteration 1600: 0.1708076297809661
+Cost after iteration 1700: 0.11306524562164737
+Cost after iteration 1800: 0.09629426845937163
+Cost after iteration 1900: 0.08342617959726878
+Cost after iteration 2000: 0.0743907870431909
+Cost after iteration 2100: 0.06630748132267938
+Cost after iteration 2200: 0.05919329501038176
+Cost after iteration 2300: 0.05336140348560564
+Cost after iteration 2400: 0.048554785628770226
+"""
+
+predictions_train = predict(train_x, train_y, parameters)
+
+"""Accuracy: 1.0"""
+
+predictions_test = predict(test_x, test_y, parameters)
+
+"""Accuracy: 0.72"""
+
+
