@@ -178,4 +178,10 @@ def gradient_check_n(parameters, gradients, X, Y, epsilon = 1e-7):
     
     return difference
 
+X, Y, parameters = gradient_check_n_test_case()
+
+cost, cache = forward_propagation_n(X, Y, parameters)
+gradients = backward_propagation_n(X, Y, cache)
+difference = gradient_check_n(parameters, gradients, X, Y)
+
 
