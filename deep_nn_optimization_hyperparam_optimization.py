@@ -598,3 +598,5 @@ Tensor("Mean_1:0", shape=(), dtype=float32)
 Train Accuracy: 0.940741
 Test Accuracy: 0.783333
 """
+
+
